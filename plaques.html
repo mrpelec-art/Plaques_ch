@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Plaques">
+<meta name="theme-color" content="#c8102e">
+<title>Chasse aux plaques</title>
+<style>
+  :root{
+    --rouge:#c8102e;--rouge-fonce:#9e0d24;
+    --vert:#16a34a;--bleu:#2563eb;
+    --fond:#f4f5f7;--carte:#fff;--texte:#1c1c1e;
+    --gris:#8e8e93;--gris-clair:#e5e5ea;
+    --ombre:0 2px 10px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--fond);color:var(--texte);
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-text-size-adjust:100%;
+  }
+  .ecran{display:none;min-height:100vh;}
+  .ecran.actif{display:block;}
+  button{font-family:inherit;}
+
+  /* ---------- Accueil ---------- */
+  #accueil{
+    display:none;flex-direction:column;min-height:100vh;
+    background:linear-gradient(165deg,var(--rouge),var(--rouge-fonce));color:#fff;
+    padding:calc(env(safe-area-inset-top) + 36px) 22px 40px;
+  }
+  #accueil.actif{display:flex;}
+  .croix{font-size:54px;line-height:1;text-align:center;}
+  #accueil h1{font-size:28px;margin:6px 0 2px;font-weight:800;letter-spacing:-.5px;text-align:center;}
+  #accueil p.sous{opacity:.85;margin:0 auto 26px;font-size:14px;max-width:300px;text-align:center;}
+  .btn-nouvelle{
+    width:100%;border:none;border-radius:16px;padding:17px;font-size:17px;font-weight:800;
+    background:#fff;color:var(--rouge);cursor:pointer;margin-bottom:22px;transition:transform .08s;
+  }
+  .btn-nouvelle:active{transform:scale(.97);}
+  .liste-titre{font-size:13px;text-transform:uppercase;letter-spacing:.5px;opacity:.8;font-weight:700;margin:0 4px 10px;}
+  .liste-parties{display:flex;flex-direction:column;gap:12px;}
+  .carte-partie{
+    background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);
+    border-radius:14px;padding:14px 14px 13px;cursor:pointer;position:relative;transition:transform .08s;
+  }
+  .carte-partie:active{transform:scale(.98);}
+  .cp-haut{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .cp-nom{font-size:17px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .badge-mode{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.25);}
+  .cp-score{font-size:13px;opacity:.95;}
+  .cp-barre{height:6px;background:rgba(255,255,255,.25);border-radius:6px;overflow:hidden;margin-top:8px;}
+  .cp-barre>span{display:block;height:100%;background:#fff;border-radius:6px;}
+  .cp-date{font-size:11px;opacity:.7;margin-top:8px;}
+  .cp-suppr{
+    position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;
+    border:none;background:rgba(0,0,0,.2);color:#fff;font-size:14px;line-height:26px;cursor:pointer;
+  }
+  .vide{opacity:.7;font-size:14px;text-align:center;padding:20px;}
+
+  /* ---------- Modale création ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.45);
+    align-items:flex-end;justify-content:center;padding:0;
+  }
+  .overlay.actif{display:flex;}
+  .feuille{
+    background:var(--carte);color:var(--texte);width:100%;max-width:520px;
+    border-radius:22px 22px 0 0;padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);
+    box-shadow:0 -4px 30px rgba(0,0,0,.2);
+  }
+  .feuille h3{margin:4px 0 18px;font-size:20px;text-align:center;}
+  .champ{margin-bottom:16px;}
+  .champ label{display:block;font-size:13px;font-weight:600;color:var(--gris);margin-bottom:6px;}
+  .champ input{
+    width:100%;border:1.5px solid var(--gris-clair);border-radius:11px;padding:13px;font-size:16px;
+    background:#fafafa;
+  }
+  .champ input:focus{outline:none;border-color:var(--rouge);}
+  .segment{display:flex;background:var(--gris-clair);border-radius:11px;padding:3px;}
+  .segment button{
+    flex:1;border:none;background:none;padding:11px;font-size:15px;font-weight:600;border-radius:9px;
+    color:var(--gris);cursor:pointer;
+  }
+  .segment button.actif{background:#fff;color:var(--texte);box-shadow:0 1px 4px rgba(0,0,0,.12);}
+  #champsDuo{display:none;}
+  #champsDuo.actif{display:block;}
+  .duo-noms{display:flex;gap:10px;}
+  .duo-noms .champ{flex:1;}
+  .feuille-actions{display:flex;gap:10px;margin-top:8px;}
+  .feuille-actions button{flex:1;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;}
+  .btn-annuler{background:var(--gris-clair);color:var(--texte);}
+  .btn-creer{background:var(--rouge);color:#fff;}
+
+  /* ---------- En-tête jeu ---------- */
+  header{
+    position:sticky;top:0;z-index:10;background:var(--rouge);color:#fff;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 12px;box-shadow:0 2px 6px rgba(0,0,0,.15);
+  }
+  .header-ligne{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .header-ligne h2{font-size:16px;margin:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;}
+  .lien{background:none;border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;white-space:nowrap;}
+  .btn-score{background:rgba(255,255,255,.22);border-radius:20px;padding:7px 13px;}
+  .total-barre{margin-top:11px;}
+  .total-txt{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;opacity:.95;}
+  .progress{height:8px;background:rgba(255,255,255,.25);border-radius:8px;overflow:hidden;}
+  .progress>span{display:block;height:100%;background:#fff;border-radius:8px;width:0;transition:width .3s;}
+  .duo-legende{display:flex;gap:8px;margin-top:11px;}
+  .duo-legende .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.16);border-radius:10px;padding:7px;font-size:13px;font-weight:700;}
+  .pastille{width:13px;height:13px;border-radius:50%;display:inline-block;}
+  .pastille.p1{background:#7CFFB0;} .pastille.p2{background:#9DC2FF;}
+
+  /* ---------- Onglets ---------- */
+  .onglets{display:flex;background:var(--carte);position:sticky;top:0;z-index:9;box-shadow:var(--ombre);}
+  .onglet{flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:600;color:var(--gris);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;}
+  .onglet small{display:block;font-size:11px;opacity:.8;margin-top:2px;}
+  .onglet.actif{color:var(--rouge);border-bottom-color:var(--rouge);}
+
+  /* ---------- Contenu ---------- */
+  main{padding:14px 12px 70px;}
+  .section{display:none;}
+  .section.actif{display:block;}
+  .section-titre{font-size:13px;color:var(--gris);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin:4px 4px 12px;}
+  .grille{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .grille.large{grid-template-columns:repeat(2,1fr);}
+
+  .plaque{
+    background:var(--carte);border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;
+    box-shadow:var(--ombre);border:2px solid transparent;transition:transform .08s,background .15s;
+    position:relative;user-select:none;
+  }
+  .plaque:active{transform:scale(.95);}
+  .plaque .code{font-size:21px;font-weight:800;letter-spacing:.4px;}
+  .plaque .nom{font-size:11px;color:var(--gris);margin-top:3px;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center;}
+  .plaque.p1{background:var(--vert);border-color:var(--vert);}
+  .plaque.p2{background:var(--bleu);border-color:var(--bleu);}
+  .plaque.p1 .code,.plaque.p1 .nom,.plaque.p2 .code,.plaque.p2 .nom{color:#fff;}
+  .plaque .marque{position:absolute;top:4px;right:6px;font-size:12px;color:#fff;font-weight:900;display:none;}
+  .plaque.p1 .marque,.plaque.p2 .marque{display:block;}
+  .compteur-section{font-size:12px;color:var(--gris);text-align:center;margin:16px 0 4px;}
+
+  /* ---------- Score ---------- */
+  #score .feuille{max-height:88vh;overflow-y:auto;}
+  .score-total{text-align:center;margin-bottom:18px;}
+  .score-total .gros{font-size:40px;font-weight:800;}
+  .score-total .pct{color:var(--gris);font-size:14px;}
+  .duo-versus{display:flex;gap:12px;margin-bottom:20px;}
+  .duo-versus .joueur{flex:1;text-align:center;border-radius:14px;padding:14px;color:#fff;}
+  .duo-versus .joueur.j1{background:var(--vert);} .duo-versus .joueur.j2{background:var(--bleu);}
+  .duo-versus .joueur .pts{font-size:32px;font-weight:800;}
+  .duo-versus .joueur .nm{font-size:14px;font-weight:600;opacity:.95;}
+  .duo-versus .joueur .couronne{font-size:18px;height:20px;}
+  .detail-cat{border-top:1px solid var(--gris-clair);padding:13px 2px;display:flex;justify-content:space-between;align-items:center;}
+  .detail-cat .lib{font-size:15px;font-weight:600;}
+  .detail-cat .val{font-size:15px;color:var(--gris);font-variant-numeric:tabular-nums;}
+  .detail-cat .val.ok{color:var(--vert);font-weight:700;}
+</style>
+</head>
+<body>
+
+<!-- ====================== ACCUEIL ====================== -->
+<section id="accueil" class="ecran actif">
+  <div class="croix">🇨🇭</div>
+  <h1>Chasse aux plaques</h1>
+  <p class="sous">Cantons suisses, plaques spéciales et pays d'Europe.</p>
+  <button class="btn-nouvelle" id="btnNouvelle">+ Nouvelle partie</button>
+  <div class="liste-titre">Mes parties</div>
+  <div class="liste-parties" id="listeParties"></div>
+</section>
+
+<!-- ====================== MODALE CRÉATION ====================== -->
+<div class="overlay" id="modaleCreer">
+  <div class="feuille">
+    <h3>Nouvelle partie</h3>
+    <div class="champ">
+      <label>Nom de la partie</label>
+      <input type="text" id="inNom" placeholder="Ex. Vacances été" maxlength="30">
+    </div>
+    <div class="champ">
+      <label>Mode</label>
+      <div class="segment" id="segMode">
+        <button data-mode="solo" class="actif">Solo</button>
+        <button data-mode="duo">2 joueurs</button>
+      </div>
+    </div>
+    <div id="champsDuo">
+      <div class="duo-noms">
+        <div class="champ"><label>Joueur 1</label><input type="text" id="inJ1" placeholder="Moi" maxlength="14"></div>
+        <div class="champ"><label>Joueur 2</label><input type="text" id="inJ2" placeholder="Mon frère" maxlength="14"></div>
+      </div>
+    </div>
+    <div class="feuille-actions">
+      <button class="btn-annuler" id="btnAnnulerCreer">Annuler</button>
+      <button class="btn-creer" id="btnValiderCreer">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== JEU ====================== -->
+<section id="jeu" class="ecran">
+  <header>
+    <div class="header-ligne">
+      <button class="lien" id="btnAccueil">‹ Parties</button>
+      <h2 id="titreJeu">Ma partie</h2>
+      <button class="lien btn-score" id="btnScore">Score</button>
+    </div>
+    <div class="total-barre">
+      <div class="total-txt"><span>Total trouvé</span><span id="totalTxt">0 / 0</span></div>
+      <div class="progress"><span id="totalBarre"></span></div>
+    </div>
+    <div class="duo-legende" id="duoLegende" style="display:none;">
+      <div class="chip"><span class="pastille p1"></span><span id="legJ1">J1</span> · <span id="legCntJ1">0</span></div>
+      <div class="chip"><span class="pastille p2"></span><span id="legJ2">J2</span> · <span id="legCntJ2">0</span></div>
+    </div>
+  </header>
+
+  <div class="onglets">
+    <button class="onglet actif" data-sec="cantons">Cantons<small id="ondCantons">0/26</small></button>
+    <button class="onglet" data-sec="speciales">Spéciales<small id="ondSpec">0/0</small></button>
+    <button class="onglet" data-sec="europe">Europe<small id="ondEur">0/0</small></button>
+  </div>
+
+  <main>
+    <div class="section actif" id="sec-cantons">
+      <div class="section-titre">26 cantons suisses</div>
+      <div class="grille" id="grilleCantons"></div>
+      <div class="compteur-section" id="cptCantons"></div>
+    </div>
+    <div class="section" id="sec-speciales">
+      <div class="section-titre">Plaques spéciales</div>
+      <div class="grille large" id="grilleSpec"></div>
+      <div class="compteur-section" id="cptSpec"></div>
+    </div>
+    <div class="section" id="sec-europe">
+      <div class="section-titre">Pays d'Europe</div>
+      <div class="grille" id="grilleEurope"></div>
+      <div class="compteur-section" id="cptEur"></div>
+    </div>
+  </main>
+</section>
+
+<!-- ====================== MODALE SCORE ====================== -->
+<div class="overlay" id="modaleScore">
+  <div class="feuille">
+    <h3>Résultats</h3>
+    <div id="scoreCorps"></div>
+    <div class="feuille-actions" style="margin-top:18px;">
+      <button class="btn-creer" id="btnFermerScore">Continuer la partie</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================== DONNÉES ====================== */
+const CANTONS = [
+  ["ZH","Zürich"],["BE","Berne"],["LU","Lucerne"],["UR","Uri"],["SZ","Schwyz"],
+  ["OW","Obwald"],["NW","Nidwald"],["GL","Glaris"],["ZG","Zoug"],["FR","Fribourg"],
+  ["SO","Soleure"],["BS","Bâle-Ville"],["BL","Bâle-Camp."],["SH","Schaffhouse"],
+  ["AR","App. Rh.-Ext."],["AI","App. Rh.-Int."],["SG","St-Gall"],["GR","Grisons"],
+  ["AG","Argovie"],["TG","Thurgovie"],["TI","Tessin"],["VD","Vaud"],["VS","Valais"],
+  ["NE","Neuchâtel"],["GE","Genève"],["JU","Jura"]
+];
+const SPECIALES = [
+  ["CD","Corps diplomatique"],
+  ["CC","Corps consulaire"],
+  ["AT","Personnel admin. & technique"],
+  ["U","Garagiste (essai)"],
+  ["M","Militaire"]
+];
+const EUROPE = [
+  ["FL","Liechtenstein"],["D","Allemagne"],["A","Autriche"],["F","France"],
+  ["I","Italie"],["E","Espagne"],["P","Portugal"],["B","Belgique"],["NL","Pays-Bas"],
+  ["L","Luxembourg"],["GB","Royaume-Uni"],["IRL","Irlande"],["DK","Danemark"],["S","Suède"],
+  ["N","Norvège"],["FIN","Finlande"],["IS","Islande"],["PL","Pologne"],["CZ","Tchéquie"],
+  ["SK","Slovaquie"],["H","Hongrie"],["SLO","Slovénie"],["HR","Croatie"],["RO","Roumanie"],
+  ["BG","Bulgarie"],["GR","Grèce"],["TR","Turquie"],["RUS","Russie"],["UA","Ukraine"],
+  ["BY","Biélorussie"],["EST","Estonie"],["LV","Lettonie"],["LT","Lituanie"],["MD","Moldavie"],
+  ["SRB","Serbie"],["BIH","Bosnie-Herz."],["MNE","Monténégro"],["MK","Macédoine N."],["AL","Albanie"],
+  ["RKS","Kosovo"],["CY","Chypre"],["M","Malte"],["MC","Monaco"],["AND","Andorre"],
+  ["RSM","Saint-Marin"],["V","Vatican"],["GE","Géorgie"]
+];
+const GROUPES = [["cantons",CANTONS],["speciales",SPECIALES],["europe",EUROPE]];
+const TOTAL = CANTONS.length + SPECIALES.length + EUROPE.length;
+const CLE = "chasse_plaques_v2";
+
+/* ====================== STOCKAGE ====================== */
+function lireTout(){ try{ return JSON.parse(localStorage.getItem(CLE)) || {games:{}}; }catch(e){ return {games:{}}; } }
+function ecrireTout(d){ localStorage.setItem(CLE, JSON.stringify(d)); }
+let db = lireTout();
+let partie = null;            // partie en cours
+let modeCreation = "solo";
+
+function sauver(){
+  if(!partie) return;
+  partie.maj = Date.now();
+  db.games[partie.id] = partie;
+  ecrireTout(db);
+}
+
+/* ====================== HELPERS ====================== */
+function nbTrouve(p){ return Object.keys(p.trouve.cantons).length + Object.keys(p.trouve.speciales).length + Object.keys(p.trouve.europe).length; }
+function compteJoueur(p,j){
+  let n=0;
+  for(const [g] of GROUPES) for(const k in p.trouve[g]) if(p.trouve[g][k]===j) n++;
+  return n;
+}
+function dateLisible(ts){
+  const d=new Date(ts);
+  return d.toLocaleDateString("fr-CH",{day:"numeric",month:"short"})+" · "+d.toLocaleTimeString("fr-CH",{hour:"2-digit",minute:"2-digit"});
+}
+function montrer(id){
+  document.querySelectorAll(".ecran").forEach(e=>e.classList.remove("actif"));
+  document.getElementById(id).classList.add("actif");
+  window.scrollTo(0,0);
+}
+
+/* ====================== ACCUEIL ====================== */
+function rendreAccueil(){
+  const liste = document.getElementById("listeParties");
+  const games = Object.values(db.games).sort((a,b)=>b.maj-a.maj);
+  if(games.length===0){ liste.innerHTML = '<div class="vide">Aucune partie. Crée-en une pour commencer !</div>'; return; }
+  liste.innerHTML = "";
+  games.forEach(p=>{
+    const n = nbTrouve(p);
+    const carte = document.createElement("div");
+    carte.className="carte-partie";
+    carte.innerHTML = `
+      <button class="cp-suppr" data-id="${p.id}">✕</button>
+      <div class="cp-haut">
+        <div class="cp-nom">${echap(p.nom)}</div>
+        <span class="badge-mode">${p.mode==="duo"?"2 joueurs":"Solo"}</span>
+      </div>
+      <div class="cp-score">${n} / ${TOTAL} trouvées</div>
+      <div class="cp-barre"><span style="width:${n/TOTAL*100}%"></span></div>
+      <div class="cp-date">Modifié le ${dateLisible(p.maj)}</div>`;
+    carte.addEventListener("click",e=>{
+      if(e.target.classList.contains("cp-suppr")) return;
+      ouvrirPartie(p.id);
+    });
+    carte.querySelector(".cp-suppr").addEventListener("click",e=>{
+      e.stopPropagation();
+      if(confirm(`Supprimer « ${p.nom} » ?`)){ delete db.games[p.id]; ecrireTout(db); rendreAccueil(); }
+    });
+    liste.appendChild(carte);
+  });
+}
+function echap(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ====================== CRÉATION ====================== */
+const modaleCreer = document.getElementById("modaleCreer");
+document.getElementById("btnNouvelle").addEventListener("click",()=>{
+  modeCreation="solo";
+  document.querySelectorAll("#segMode button").forEach(b=>b.classList.toggle("actif",b.dataset.mode==="solo"));
+  document.getElementById("champsDuo").classList.remove("actif");
+  const d=new Date();
+  document.getElementById("inNom").value = "Partie du "+d.toLocaleDateString("fr-CH",{day:"numeric",month:"long"});
+  document.getElementById("inJ1").value=""; document.getElementById("inJ2").value="";
+  modaleCreer.classList.add("actif");
+});
+document.querySelectorAll("#segMode button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    modeCreation=b.dataset.mode;
+    document.querySelectorAll("#segMode button").forEach(x=>x.classList.toggle("actif",x===b));
+    document.getElementById("champsDuo").classList.toggle("actif",modeCreation==="duo");
+  });
+});
+document.getElementById("btnAnnulerCreer").addEventListener("click",()=>modaleCreer.classList.remove("actif"));
+document.getElementById("btnValiderCreer").addEventListener("click",()=>{
+  const nom = document.getElementById("inNom").value.trim() || "Partie sans nom";
+  const j1 = document.getElementById("inJ1").value.trim() || "Joueur 1";
+  const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
+  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
+             trouve:{cantons:{},speciales:{},europe:{}} };
+  db.games[id]=partie; ecrireTout(db);
+  modaleCreer.classList.remove("actif");
+  lancerJeu();
+});
+
+/* ====================== OUVRIR / JEU ====================== */
+function ouvrirPartie(id){ partie = db.games[id]; lancerJeu(); }
+function lancerJeu(){
+  document.getElementById("titreJeu").textContent = partie.nom;
+  const duo = partie.mode==="duo";
+  document.getElementById("duoLegende").style.display = duo?"flex":"none";
+  if(duo){
+    document.getElementById("legJ1").textContent = partie.players[0];
+    document.getElementById("legJ2").textContent = partie.players[1];
+  }
+  GROUPES.forEach(([g,liste])=>remplir(g,liste));
+  majTotaux();
+  // revenir au 1er onglet
+  document.querySelectorAll(".onglet").forEach((x,i)=>x.classList.toggle("actif",i===0));
+  document.querySelectorAll(".section").forEach((x,i)=>x.classList.toggle("actif",i===0));
+  montrer("jeu");
+}
+function remplir(groupe,liste){
+  const ids={cantons:"grilleCantons",speciales:"grilleSpec",europe:"grilleEurope"};
+  const g=document.getElementById(ids[groupe]); g.innerHTML="";
+  liste.forEach(([code,nom])=>{
+    const v = partie.trouve[groupe][code];
+    const div=document.createElement("div");
+    div.className="plaque"+(v?(" p"+v):"");
+    const marque = v ? (partie.mode==="duo" ? initiale(partie.players[v-1]) : "✓") : "";
+    div.innerHTML=`<span class="marque">${marque}</span><div class="code">${code}</div><div class="nom">${nom}</div>`;
+    div.addEventListener("click",()=>basculer(groupe,code,div));
+    g.appendChild(div);
+  });
+}
+function initiale(nom){ return (nom||"?").trim().charAt(0).toUpperCase(); }
+
+function basculer(groupe,code,div){
+  const cur = partie.trouve[groupe][code];
+  if(partie.mode==="duo"){
+    if(!cur){ partie.trouve[groupe][code]=1; }
+    else if(cur===1){ partie.trouve[groupe][code]=2; }
+    else { delete partie.trouve[groupe][code]; }
+  } else {
+    if(cur){ delete partie.trouve[groupe][code]; } else { partie.trouve[groupe][code]=1; }
+  }
+  const v = partie.trouve[groupe][code];
+  div.classList.remove("p1","p2");
+  if(v) div.classList.add("p"+v);
+  div.querySelector(".marque").textContent = v ? (partie.mode==="duo"?initiale(partie.players[v-1]):"✓") : "";
+  sauver(); majTotaux();
+}
+
+function majTotaux(){
+  const nC=Object.keys(partie.trouve.cantons).length;
+  const nS=Object.keys(partie.trouve.speciales).length;
+  const nE=Object.keys(partie.trouve.europe).length;
+  const total=nC+nS+nE;
+  document.getElementById("totalTxt").textContent=`${total} / ${TOTAL}`;
+  document.getElementById("totalBarre").style.width=(total/TOTAL*100)+"%";
+  document.getElementById("ondCantons").textContent=`${nC}/${CANTONS.length}`;
+  document.getElementById("ondSpec").textContent=`${nS}/${SPECIALES.length}`;
+  document.getElementById("ondEur").textContent=`${nE}/${EUROPE.length}`;
+  cpt("cptCantons",nC,CANTONS.length,"cantons");
+  cpt("cptSpec",nS,SPECIALES.length,"plaques spéciales");
+  cpt("cptEur",nE,EUROPE.length,"pays");
+  if(partie.mode==="duo"){
+    document.getElementById("legCntJ1").textContent=compteJoueur(partie,1);
+    document.getElementById("legCntJ2").textContent=compteJoueur(partie,2);
+  }
+}
+function cpt(id,n,max,mot){
+  const el=document.getElementById(id);
+  if(n===max){ el.innerHTML=`🎉 Complet ! Les ${max} ${mot} trouvés.`; el.style.color="var(--vert)"; el.style.fontWeight="700"; }
+  else{ el.textContent=`${n} / ${max} ${mot}`; el.style.color="var(--gris)"; el.style.fontWeight="400"; }
+}
+
+/* nav onglets */
+document.querySelectorAll(".onglet").forEach(o=>{
+  o.addEventListener("click",()=>{
+    document.querySelectorAll(".onglet").forEach(x=>x.classList.remove("actif"));
+    document.querySelectorAll(".section").forEach(x=>x.classList.remove("actif"));
+    o.classList.add("actif");
+    document.getElementById("sec-"+o.dataset.sec).classList.add("actif");
+    window.scrollTo(0,0);
+  });
+});
+document.getElementById("btnAccueil").addEventListener("click",()=>{ rendreAccueil(); montrer("accueil"); });
+
+/* ====================== SCORE ====================== */
+const modaleScore=document.getElementById("modaleScore");
+document.getElementById("btnScore").addEventListener("click",ouvrirScore);
+document.getElementById("btnFermerScore").addEventListener("click",()=>modaleScore.classList.remove("actif"));
+modaleScore.addEventListener("click",e=>{ if(e.target===modaleScore) modaleScore.classList.remove("actif"); });
+modaleCreer.addEventListener("click",e=>{ if(e.target===modaleCreer) modaleCreer.classList.remove("actif"); });
+
+function ouvrirScore(){
+  const nC=Object.keys(partie.trouve.cantons).length;
+  const nS=Object.keys(partie.trouve.speciales).length;
+  const nE=Object.keys(partie.trouve.europe).length;
+  const total=nC+nS+nE;
+  const pct=Math.round(total/TOTAL*100);
+  let html="";
+  if(partie.mode==="duo"){
+    const a=compteJoueur(partie,1), b=compteJoueur(partie,2);
+    const c1 = a>b?"👑":"&nbsp;", c2 = b>a?"👑":"&nbsp;";
+    html += `<div class="duo-versus">
+      <div class="joueur j1"><div class="couronne">${c1}</div><div class="pts">${a}</div><div class="nm">${echap(partie.players[0])}</div></div>
+      <div class="joueur j2"><div class="couronne">${c2}</div><div class="pts">${b}</div><div class="nm">${echap(partie.players[1])}</div></div>
+    </div>`;
+    if(total===TOTAL){
+      const txt = a===b ? "Égalité parfaite !" : `Victoire de ${echap(partie.players[a>b?0:1])} !`;
+      html += `<div style="text-align:center;font-weight:800;color:var(--rouge);font-size:18px;margin:-6px 0 16px;">🏁 ${txt}</div>`;
+    }
+  }
+  html += `<div class="score-total"><div class="gros">${total} <span style="font-size:20px;color:var(--gris);">/ ${TOTAL}</span></div><div class="pct">${pct}% des plaques trouvées</div></div>`;
+  html += ligneDetail("Cantons suisses",nC,CANTONS.length);
+  html += ligneDetail("Plaques spéciales",nS,SPECIALES.length);
+  html += ligneDetail("Pays d'Europe",nE,EUROPE.length);
+  document.getElementById("scoreCorps").innerHTML=html;
+  modaleScore.classList.add("actif");
+}
+function ligneDetail(lib,n,max){
+  const ok=n===max;
+  return `<div class="detail-cat"><span class="lib">${lib}</span><span class="val ${ok?'ok':''}">${ok?'✓ ':''}${n} / ${max}</span></div>`;
+}
+
+/* ====================== INIT ====================== */
+rendreAccueil();
+</script>
+</body>
+</html>
