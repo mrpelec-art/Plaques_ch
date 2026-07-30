@@ -264,7 +264,7 @@ const CANTONS = [
   ["AR","App. Rh.-Ext."],["AI","App. Rh.-Int."],["SG","St-Gall"],["GR","Grisons"],
   ["AG","Argovie"],["TG","Thurgovie"],["TI","Tessin"],["VD","Vaud"],["VS","Valais"],
   ["NE","Neuchâtel"],["GE","Genève"],["JU","Jura"]
-];
+].sort((a,b)=>a[1].localeCompare(b[1],"fr"));
 const SPECIALES = [
   ["CD","Corps diplomatique"],
   ["CC","Corps consulaire"],
