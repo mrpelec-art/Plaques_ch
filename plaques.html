@@ -116,7 +116,7 @@
   .pastille.p1{background:#7CFFB0;} .pastille.p2{background:#9DC2FF;}
 
   /* ---------- Onglets ---------- */
-  .onglets{display:flex;background:var(--carte);position:sticky;top:0;z-index:9;box-shadow:var(--ombre);}
+  .onglets{display:flex;background:var(--carte);position:sticky;top:var(--header-h,0px);z-index:9;box-shadow:var(--ombre);}
   .onglet{flex:1;text-align:center;padding:12px 4px;font-size:13px;font-weight:600;color:var(--gris);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;}
   .onglet small{display:block;font-size:11px;opacity:.8;margin-top:2px;}
   .onglet.actif{color:var(--rouge);border-bottom-color:var(--rouge);}
@@ -285,6 +285,7 @@ const EUROPE = [
   ["RSM","Saint-Marin"],["V","Vatican"],["GE","Géorgie"]
 ];
 const GROUPES = [["cantons",CANTONS],["speciales",SPECIALES],["europe",EUROPE]];
+const MAX = {cantons:CANTONS.length, speciales:SPECIALES.length, europe:EUROPE.length};
 const TOTAL = CANTONS.length + SPECIALES.length + EUROPE.length;
 const CLE = "chasse_plaques_v2";
 
@@ -318,6 +319,14 @@ function montrer(id){
   document.getElementById(id).classList.add("actif");
   window.scrollTo(0,0);
 }
+
+/* colle la barre d'onglets juste sous l'en-tête, quelle que soit sa hauteur (safe-area, mode duo…) */
+const headerJeu = document.querySelector("#jeu header");
+function majHauteurHeader(){
+  document.documentElement.style.setProperty("--header-h", headerJeu.offsetHeight+"px");
+}
+new ResizeObserver(majHauteurHeader).observe(headerJeu);
+majHauteurHeader();
 
 /* ====================== ACCUEIL ====================== */
 function rendreAccueil(){
@@ -415,6 +424,7 @@ function remplir(groupe,liste){
 function initiale(nom){ return (nom||"?").trim().charAt(0).toUpperCase(); }
 
 function basculer(groupe,code,div){
+  const avant = Object.keys(partie.trouve[groupe]).length;
   const cur = partie.trouve[groupe][code];
   if(partie.mode==="duo"){
     if(!cur){ partie.trouve[groupe][code]=1; }
@@ -428,6 +438,57 @@ function basculer(groupe,code,div){
   if(v) div.classList.add("p"+v);
   div.querySelector(".marque").textContent = v ? (partie.mode==="duo"?initiale(partie.players[v-1]):"✓") : "";
   sauver(); majTotaux();
+  const apres = Object.keys(partie.trouve[groupe]).length;
+  if(avant<MAX[groupe] && apres===MAX[groupe]) feuArtifice();
+}
+
+/* ====================== FEU D'ARTIFICE ====================== */
+function feuArtifice(){
+  const DUREE = 5000;
+  const canvas = document.createElement("canvas");
+  canvas.style.cssText = "position:fixed;inset:0;z-index:500;pointer-events:none;";
+  canvas.width = innerWidth; canvas.height = innerHeight;
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+  const couleurs = ["#ff595e","#ffca3a","#8ac926","#1982c4","#6a4c93","#ffffff","#ff924c"];
+  let particules = [];
+
+  function explosion(x,y){
+    const couleur = couleurs[Math.floor(Math.random()*couleurs.length)];
+    const n = 34 + Math.random()*18;
+    for(let i=0;i<n;i++){
+      const angle = (Math.PI*2*i)/n + Math.random()*0.2;
+      const vitesse = 2 + Math.random()*3.2;
+      particules.push({ x, y, vx:Math.cos(angle)*vitesse, vy:Math.sin(angle)*vitesse, vie:1, couleur });
+    }
+  }
+
+  const debut = performance.now();
+  let prochainLancement = 0;
+  function boucle(t){
+    const ecoule = t - debut;
+    if(ecoule >= prochainLancement && ecoule < DUREE - 800){
+      explosion(canvas.width*(0.2+Math.random()*0.6), canvas.height*(0.18+Math.random()*0.35));
+      prochainLancement = ecoule + 450 + Math.random()*400;
+    }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particules.forEach(p=>{
+      p.x += p.vx; p.y += p.vy; p.vy += 0.055; p.vie -= 0.014;
+      ctx.globalAlpha = Math.max(p.vie,0);
+      ctx.fillStyle = p.couleur;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,2.5,0,Math.PI*2);
+      ctx.fill();
+    });
+    particules = particules.filter(p=>p.vie>0);
+    ctx.globalAlpha = 1;
+    if(ecoule < DUREE){
+      requestAnimationFrame(boucle);
+    } else {
+      canvas.remove();
+    }
+  }
+  requestAnimationFrame(boucle);
 }
 
 function majTotaux(){
