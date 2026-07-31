@@ -487,21 +487,25 @@ document.querySelectorAll("#segMode button").forEach(b=>{
 });
 document.getElementById("btnAnnulerCreer").addEventListener("click",()=>modaleCreer.classList.remove("actif"));
 document.getElementById("btnValiderCreer").addEventListener("click",()=>{
-  const nom = document.getElementById("inNom").value.trim() || "Partie sans nom";
-  const j1 = document.getElementById("inJ1").value.trim() || "Joueur 1";
-  const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
-  const sync = modeCreation==="duo" && document.getElementById("inSync").checked;
-  const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
-             trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
-  db.games[id]=partie; ecrireTout(db);
-  if(sync){
-    try{ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
-    catch(e){ console.warn("Échec de la création synchronisée :", e); }
+  try{
+    const nom = document.getElementById("inNom").value.trim() || "Partie sans nom";
+    const j1 = document.getElementById("inJ1").value.trim() || "Joueur 1";
+    const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
+    const sync = modeCreation==="duo" && document.getElementById("inSync").checked;
+    const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
+               trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
+    db.games[id]=partie; ecrireTout(db);
+    if(sync){
+      try{ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
+      catch(e){ console.warn("Échec de la création synchronisée :", e); }
+    }
+    modaleCreer.classList.remove("actif");
+    lancerJeu();
+    if(sync){ alert("Code à partager avec l'autre joueur :\n\n"+id); }
+  }catch(e){
+    alert("ERREUR pendant la création :\n\n"+(e && e.message ? e.message : e));
   }
-  modaleCreer.classList.remove("actif");
-  lancerJeu();
-  if(sync){ alert("Code à partager avec l'autre joueur :\n\n"+id); }
 });
 
 document.getElementById("btnRejoindre").addEventListener("click",()=>{
