@@ -135,6 +135,8 @@
     position:relative;user-select:none;
   }
   .plaque:active{transform:scale(.95);}
+  .plaque .ecusson{width:28px;height:28px;object-fit:contain;display:block;margin:0 auto 4px;}
+  .plaque .drapeau{font-size:22px;line-height:1;margin-bottom:3px;}
   .plaque .code{font-size:21px;font-weight:800;letter-spacing:.4px;}
   .plaque .nom{font-size:11px;color:var(--gris);margin-top:3px;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center;}
   .plaque.p1{background:var(--vert);border-color:var(--vert);}
@@ -220,14 +222,14 @@
   </header>
 
   <div class="onglets">
-    <button class="onglet actif" data-sec="cantons">Cantons<small id="ondCantons">0/26</small></button>
+    <button class="onglet actif" data-sec="cantons">Cantons<small id="ondCantons">0/27</small></button>
     <button class="onglet" data-sec="speciales">Spéciales<small id="ondSpec">0/0</small></button>
     <button class="onglet" data-sec="europe">Europe<small id="ondEur">0/0</small></button>
   </div>
 
   <main>
     <div class="section actif" id="sec-cantons">
-      <div class="section-titre">26 cantons suisses</div>
+      <div class="section-titre">Cantons suisses + Liechtenstein</div>
       <div class="grille" id="grilleCantons"></div>
       <div class="compteur-section" id="cptCantons"></div>
     </div>
@@ -263,31 +265,72 @@ const CANTONS = [
   ["SO","Soleure"],["BS","Bâle-Ville"],["BL","Bâle-Camp."],["SH","Schaffhouse"],
   ["AR","App. Rh.-Ext."],["AI","App. Rh.-Int."],["SG","St-Gall"],["GR","Grisons"],
   ["AG","Argovie"],["TG","Thurgovie"],["TI","Tessin"],["VD","Vaud"],["VS","Valais"],
-  ["NE","Neuchâtel"],["GE","Genève"],["JU","Jura"]
+  ["NE","Neuchâtel"],["GE","Genève"],["JU","Jura"],["FL","Liechtenstein"]
 ].sort((a,b)=>a[1].localeCompare(b[1],"fr"));
 const SPECIALES = [
-  ["CD","Corps diplomatique"],
+  ["CD-B","Corps diplomatique (plaque bleue)","CD"],
+  ["CD-V","Corps diplomatique (plaque verte)","CD"],
   ["CC","Corps consulaire"],
   ["AT","Personnel admin. & technique"],
   ["U","Garagiste (essai)"],
   ["M","Militaire"]
 ];
 const EUROPE = [
-  ["FL","Liechtenstein"],["D","Allemagne"],["A","Autriche"],["F","France"],
+  ["D","Allemagne"],["A","Autriche"],["F","France"],
   ["I","Italie"],["E","Espagne"],["P","Portugal"],["B","Belgique"],["NL","Pays-Bas"],
-  ["L","Luxembourg"],["GB","Royaume-Uni"],["IRL","Irlande"],["DK","Danemark"],["S","Suède"],
+  ["L","Luxembourg"],["UK","Royaume-Uni"],["IRL","Irlande"],["DK","Danemark"],["S","Suède"],
   ["N","Norvège"],["FIN","Finlande"],["IS","Islande"],["PL","Pologne"],["CZ","Tchéquie"],
   ["SK","Slovaquie"],["H","Hongrie"],["SLO","Slovénie"],["HR","Croatie"],["RO","Roumanie"],
   ["BG","Bulgarie"],["GR","Grèce"],["TR","Turquie"],["RUS","Russie"],["UA","Ukraine"],
   ["BY","Biélorussie"],["EST","Estonie"],["LV","Lettonie"],["LT","Lituanie"],["MD","Moldavie"],
-  ["SRB","Serbie"],["BIH","Bosnie-Herz."],["MNE","Monténégro"],["MK","Macédoine N."],["AL","Albanie"],
+  ["SRB","Serbie"],["BIH","Bosnie-Herz."],["MNE","Monténégro"],["NMK/MK","Macédoine N."],["AL","Albanie"],
   ["RKS","Kosovo"],["CY","Chypre"],["M","Malte"],["MC","Monaco"],["AND","Andorre"],
-  ["RSM","Saint-Marin"],["V","Vatican"],["GE","Géorgie"]
-];
+  ["RSM","Saint-Marin"],["V","Vatican"],["GE","Géorgie"],["FO","Îles Féroé"],
+  ["GBJ","Jersey"],["GBG","Guernesey"],["GBM","Île de Man"],["GBZ","Gibraltar"],
+  ["MA","Maroc"],["IL","Israël"],["AM","Arménie"],["AZ","Azerbaïdjan"],["KZ","Kazakhstan"],["UZ","Ouzbékistan"],
+  ["FL","Liechtenstein"]
+].sort((a,b)=>a[1].localeCompare(b[1],"fr"));
+/* codes qui existent dans deux groupes à la fois et doivent rester synchronisés */
+const LIES = { FL:["cantons","europe"] };
 const GROUPES = [["cantons",CANTONS],["speciales",SPECIALES],["europe",EUROPE]];
 const MAX = {cantons:CANTONS.length, speciales:SPECIALES.length, europe:EUROPE.length};
 const TOTAL = CANTONS.length + SPECIALES.length + EUROPE.length;
 const CLE = "chasse_plaques_v2";
+
+/* Écussons (Wikimedia Commons) — fichier introuvable ou nom différent ? l'image se cache toute seule (onerror). */
+const ECUSSONS = {
+  ZH:"Wappen Zürich matt.svg", BE:"Wappen Bern matt.svg", LU:"Wappen Luzern matt.svg",
+  UR:"Wappen Uri matt.svg", SZ:"Wappen Schwyz matt.svg", OW:"Wappen Obwalden matt.svg",
+  NW:"Wappen Nidwalden matt.svg", GL:"Wappen Glarus matt.svg", ZG:"Wappen Zug matt.svg",
+  FR:"Wappen Freiburg matt.svg", SO:"Wappen Solothurn matt.svg", BS:"Wappen Basel-Stadt matt.svg",
+  BL:"Wappen Basel-Landschaft matt.svg", SH:"Wappen Schaffhausen matt.svg",
+  AR:"Wappen Appenzell Ausserrhoden matt.svg", AI:"Wappen Appenzell Innerrhoden matt.svg",
+  SG:"Wappen St. Gallen matt.svg", GR:"Wappen Graubünden matt.svg", AG:"Wappen Aargau matt.svg",
+  TG:"Wappen Thurgau matt.svg", TI:"Wappen Tessin matt.svg", VD:"Wappen Waadt matt.svg",
+  VS:"Wappen Wallis matt.svg", NE:"Wappen Neuenburg matt.svg", GE:"Wappen Genf matt.svg",
+  JU:"Wappen Jura matt.svg", FL:"Wappen Liechtenstein.svg"
+};
+function urlEcusson(code){
+  const fichier = ECUSSONS[code];
+  return fichier ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fichier)}?width=80` : null;
+}
+
+/* Drapeaux (emoji Unicode — aucune dépendance externe, toujours fiable) */
+const DRAPEAUX = {
+  D:"DE", A:"AT", F:"FR", I:"IT", E:"ES", P:"PT", B:"BE", NL:"NL", L:"LU", UK:"GB",
+  IRL:"IE", DK:"DK", S:"SE", N:"NO", FIN:"FI", IS:"IS", PL:"PL", CZ:"CZ", SK:"SK",
+  H:"HU", SLO:"SI", HR:"HR", RO:"RO", BG:"BG", GR:"GR", TR:"TR", RUS:"RU", UA:"UA",
+  BY:"BY", EST:"EE", LV:"LV", LT:"LT", MD:"MD",
+  SRB:"RS", BIH:"BA", MNE:"ME", MK:"MK", NMK:"MK",
+  AL:"AL", RKS:"XK", CY:"CY", M:"MT", MC:"MC", AND:"AD", RSM:"SM", V:"VA", GE:"GE",
+  FO:"FO", GBJ:"JE", GBG:"GG", GBM:"IM", GBZ:"GI", MA:"MA", IL:"IL", AM:"AM", AZ:"AZ",
+  KZ:"KZ", UZ:"UZ", FL:"LI"
+};
+function emojiDrapeau(code){
+  const iso2 = DRAPEAUX[code];
+  if(!iso2) return null;
+  return [...iso2].map(c=>String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join("");
+}
 
 /* ====================== STOCKAGE ====================== */
 function lireTout(){ try{ return JSON.parse(localStorage.getItem(CLE)) || {games:{}}; }catch(e){ return {games:{}}; } }
@@ -408,38 +451,52 @@ function lancerJeu(){
   document.querySelectorAll(".section").forEach((x,i)=>x.classList.toggle("actif",i===0));
   montrer("jeu");
 }
+const IDS_GRILLE = {cantons:"grilleCantons",speciales:"grilleSpec",europe:"grilleEurope"};
 function remplir(groupe,liste){
-  const ids={cantons:"grilleCantons",speciales:"grilleSpec",europe:"grilleEurope"};
-  const g=document.getElementById(ids[groupe]); g.innerHTML="";
-  liste.forEach(([code,nom])=>{
+  const g=document.getElementById(IDS_GRILLE[groupe]); g.innerHTML="";
+  liste.forEach(([code,nom,affiche])=>{
     const v = partie.trouve[groupe][code];
     const div=document.createElement("div");
     div.className="plaque"+(v?(" p"+v):"");
+    div.dataset.code = code;
     const marque = v ? (partie.mode==="duo" ? initiale(partie.players[v-1]) : "✓") : "";
-    div.innerHTML=`<span class="marque">${marque}</span><div class="code">${code}</div><div class="nom">${nom}</div>`;
-    div.addEventListener("click",()=>basculer(groupe,code,div));
+    const urlImg = groupe==="cantons" ? urlEcusson(code) : null;
+    const emoji = groupe==="europe" ? emojiDrapeau(code) : null;
+    const imgHtml = urlImg ? `<img class="ecusson" src="${urlImg}" alt="" loading="lazy" onerror="this.remove()">` : "";
+    const drapeauHtml = emoji ? `<div class="drapeau">${emoji}</div>` : "";
+    div.innerHTML=`<span class="marque">${marque}</span>${imgHtml}${drapeauHtml}<div class="code">${affiche||code}</div><div class="nom">${nom}</div>`;
+    div.addEventListener("click",()=>basculer(groupe,code));
     g.appendChild(div);
   });
 }
 function initiale(nom){ return (nom||"?").trim().charAt(0).toUpperCase(); }
 
-function basculer(groupe,code,div){
-  const avant = Object.keys(partie.trouve[groupe]).length;
-  const cur = partie.trouve[groupe][code];
-  if(partie.mode==="duo"){
-    if(!cur){ partie.trouve[groupe][code]=1; }
-    else if(cur===1){ partie.trouve[groupe][code]=2; }
-    else { delete partie.trouve[groupe][code]; }
-  } else {
-    if(cur){ delete partie.trouve[groupe][code]; } else { partie.trouve[groupe][code]=1; }
+/* applique une valeur (1, 2 ou undefined) au code dans un groupe donné, et met à jour sa tuile si elle existe */
+function appliquerValeur(groupe, code, v){
+  if(v){ partie.trouve[groupe][code]=v; } else { delete partie.trouve[groupe][code]; }
+  const d = document.querySelector(`#${IDS_GRILLE[groupe]} [data-code="${code}"]`);
+  if(d){
+    d.classList.remove("p1","p2");
+    if(v) d.classList.add("p"+v);
+    d.querySelector(".marque").textContent = v ? (partie.mode==="duo"?initiale(partie.players[v-1]):"✓") : "";
   }
-  const v = partie.trouve[groupe][code];
-  div.classList.remove("p1","p2");
-  if(v) div.classList.add("p"+v);
-  div.querySelector(".marque").textContent = v ? (partie.mode==="duo"?initiale(partie.players[v-1]):"✓") : "";
+}
+
+function basculer(groupe,code){
+  const cur = partie.trouve[groupe][code];
+  let v;
+  if(partie.mode==="duo"){
+    if(!cur){ v=1; } else if(cur===1){ v=2; } else { v=undefined; }
+  } else {
+    v = cur ? undefined : 1;
+  }
+  const groupesTouches = [groupe, ...((LIES[code]||[]).filter(g=>g!==groupe))];
+  const avant = {};
+  groupesTouches.forEach(g=>{ avant[g]=Object.keys(partie.trouve[g]).length; });
+  groupesTouches.forEach(g=>appliquerValeur(g, code, v));
   sauver(); majTotaux();
-  const apres = Object.keys(partie.trouve[groupe]).length;
-  if(avant<MAX[groupe] && apres===MAX[groupe]) feuArtifice();
+  const complet = groupesTouches.some(g=>avant[g]<MAX[g] && Object.keys(partie.trouve[g]).length===MAX[g]);
+  if(complet) feuArtifice();
 }
 
 /* ====================== FEU D'ARTIFICE ====================== */
