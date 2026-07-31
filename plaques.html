@@ -310,7 +310,6 @@ const ECUSSONS = {
   VS:"Wappen Wallis matt.svg", NE:"Wappen Neuenburg matt.svg", GE:"Wappen Genf matt.svg",
   JU:"Wappen Jura matt.svg"
 };
-};
 function urlEcusson(code){
   const fichier = ECUSSONS[code];
   return fichier ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fichier)}?width=80` : null;
@@ -460,10 +459,9 @@ function remplir(groupe,liste){
     const div=document.createElement("div");
     div.className="plaque"+(v?(" p"+v):"");
     div.dataset.code = code;
-    const marque = v ? (partie.mode==="duo" ? initiale(partie.players[v-1]) : "✓") : "";
-        const urlImg = (groupe==="cantons" && code!=="FL") ? urlEcusson(code) : null;
+const marque = v ? (partie.mode==="duo" ? initiale(partie.players[v-1]) : "✓") : "";
+    const urlImg = (groupe==="cantons" && code!=="FL") ? urlEcusson(code) : null;
     const emoji = (groupe==="europe" || code==="FL") ? emojiDrapeau(code) : null;
-    const emoji = groupe==="europe" ? emojiDrapeau(code) : null;
     const imgHtml = urlImg ? `<img class="ecusson" src="${urlImg}" alt="" loading="lazy" onerror="this.remove()">` : "";
     const drapeauHtml = emoji ? `<div class="drapeau">${emoji}</div>` : "";
     div.innerHTML=`<span class="marque">${marque}</span>${imgHtml}${drapeauHtml}<div class="code">${affiche||code}</div><div class="nom">${nom}</div>`;
