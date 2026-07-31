@@ -523,12 +523,8 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
   if(!saisie) return;
   const code = saisie.trim().toUpperCase();
   try{
-    firebase.database().ref("games/"+code).once("value").then(snap=>{
+  firebase.database().ref("games/"+code).once("value").then(snap=>{
       const data = snap.val();
-      if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
-      partie = normaliserPartie(data);
-      db.games[code] = partie; ecrireTout(db);
-const data = snap.val();
       if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
       partie = normaliserPartie(data);
       db.games[code] = partie; ecrireTout(db);
