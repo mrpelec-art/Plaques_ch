@@ -43,6 +43,10 @@
     background:#fff;color:var(--rouge);cursor:pointer;margin-bottom:22px;transition:transform .08s;
   }
   .btn-nouvelle:active{transform:scale(.97);}
+  .btn-rejoindre{
+    width:100%;border:1.5px solid rgba(255,255,255,.5);border-radius:16px;padding:14px;font-size:15px;font-weight:700;
+    background:transparent;color:#fff;cursor:pointer;margin-bottom:26px;
+  }
   .liste-titre{font-size:13px;text-transform:uppercase;letter-spacing:.5px;opacity:.8;font-weight:700;margin:0 4px 10px;}
   .liste-parties{display:flex;flex-direction:column;gap:12px;}
   .carte-partie{
@@ -92,6 +96,8 @@
   #champsDuo.actif{display:block;}
   .duo-noms{display:flex;gap:10px;}
   .duo-noms .champ{flex:1;}
+  .champ-sync{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--texte);margin:2px 4px 14px;}
+  .champ-sync input{width:18px;height:18px;}
   .feuille-actions{display:flex;gap:10px;margin-top:8px;}
   .feuille-actions button{flex:1;border:none;border-radius:13px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;}
   .btn-annuler{background:var(--gris-clair);color:var(--texte);}
@@ -106,6 +112,7 @@
   .header-ligne h2{font-size:16px;margin:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:center;}
   .lien{background:none;border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;white-space:nowrap;}
   .btn-score{background:rgba(255,255,255,.22);border-radius:20px;padding:7px 13px;}
+  .code-partage{font-size:12px;text-align:center;opacity:.85;margin-top:6px;letter-spacing:.4px;}
   .total-barre{margin-top:11px;}
   .total-txt{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;opacity:.95;}
   .progress{height:8px;background:rgba(255,255,255,.25);border-radius:8px;overflow:hidden;}
@@ -171,6 +178,7 @@
   <h1>Chasse aux plaques</h1>
   <p class="sous">Cantons suisses, plaques spéciales et pays d'Europe.</p>
   <button class="btn-nouvelle" id="btnNouvelle">+ Nouvelle partie</button>
+  <button class="btn-rejoindre" id="btnRejoindre">Rejoindre avec un code</button>
   <div class="liste-titre">Mes parties</div>
   <div class="liste-parties" id="listeParties"></div>
 </section>
@@ -195,6 +203,10 @@
         <div class="champ"><label>Joueur 1</label><input type="text" id="inJ1" placeholder="Moi" maxlength="14"></div>
         <div class="champ"><label>Joueur 2</label><input type="text" id="inJ2" placeholder="Mon frère" maxlength="14"></div>
       </div>
+      <label class="champ-sync">
+        <input type="checkbox" id="inSync">
+        Jouer sur 2 téléphones (code à partager)
+      </label>
     </div>
     <div class="feuille-actions">
       <button class="btn-annuler" id="btnAnnulerCreer">Annuler</button>
@@ -211,6 +223,7 @@
       <h2 id="titreJeu">Ma partie</h2>
       <button class="lien btn-score" id="btnScore">Score</button>
     </div>
+    <div class="code-partage" id="codePartage" style="display:none;"></div>
     <div class="total-barre">
       <div class="total-txt"><span>Total trouvé</span><span id="totalTxt">0 / 0</span></div>
       <div class="progress"><span id="totalBarre"></span></div>
@@ -257,7 +270,48 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script>
+/* ====================== SYNCHRONISATION (Firebase) ====================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyC_T2HHmRfU7YnPu-dqpJh8zfUwymBJXgw",
+  authDomain: "plaques-ch.firebaseapp.com",
+  databaseURL: "https://plaques-ch-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "plaques-ch",
+  storageBucket: "plaques-ch.firebasestorage.app",
+  messagingSenderId: "384227131158",
+  appId: "1:384227131158:web:9e95188ba9c20e082eda37"
+};
+firebase.initializeApp(firebaseConfig);
+
+const ALPHABET_CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function genererCode(n=5){
+  let s="";
+  for(let i=0;i<n;i++) s += ALPHABET_CODE[Math.floor(Math.random()*ALPHABET_CODE.length)];
+  return s;
+}
+
+let refSync = null;
+function detacherSync(){ if(refSync){ refSync.off(); refSync = null; } }
+function attacherSync(code){
+  detacherSync();
+  refSync = firebase.database().ref("games/"+code);
+  refSync.on("value", snap=>{
+    const data = snap.val();
+    if(!data || !partie || partie.code!==code) return;
+    partie = data;
+    db.games[code] = partie; ecrireTout(db);
+    document.getElementById("titreJeu").textContent = partie.nom;
+    if(partie.mode==="duo"){
+      document.getElementById("legJ1").textContent = partie.players[0];
+      document.getElementById("legJ2").textContent = partie.players[1];
+    }
+    GROUPES.forEach(([g,liste])=>remplir(g,liste));
+    majTotaux();
+  });
+}
+
 /* ====================== DONNÉES ====================== */
 const CANTONS = [
   ["ZH","Zürich"],["BE","Berne"],["LU","Lucerne"],["UR","Uri"],["SZ","Schwyz"],
@@ -344,6 +398,9 @@ function sauver(){
   partie.maj = Date.now();
   db.games[partie.id] = partie;
   ecrireTout(db);
+  if(partie.sync && partie.code){
+    firebase.database().ref("games/"+partie.code).set(partie).catch(()=>{});
+  }
 }
 
 /* ====================== HELPERS ====================== */
@@ -385,7 +442,7 @@ function rendreAccueil(){
       <button class="cp-suppr" data-id="${p.id}">✕</button>
       <div class="cp-haut">
         <div class="cp-nom">${echap(p.nom)}</div>
-        <span class="badge-mode">${p.mode==="duo"?"2 joueurs":"Solo"}</span>
+        <span class="badge-mode">${p.mode==="duo"?(p.sync?"2 joueurs · en direct":"2 joueurs"):"Solo"}</span>
       </div>
       <div class="cp-score">${n} / ${TOTAL} trouvées</div>
       <div class="cp-barre"><span style="width:${n/TOTAL*100}%"></span></div>
@@ -412,6 +469,7 @@ document.getElementById("btnNouvelle").addEventListener("click",()=>{
   const d=new Date();
   document.getElementById("inNom").value = "Partie du "+d.toLocaleDateString("fr-CH",{day:"numeric",month:"long"});
   document.getElementById("inJ1").value=""; document.getElementById("inJ2").value="";
+  document.getElementById("inSync").checked = false;
   modaleCreer.classList.add("actif");
 });
 document.querySelectorAll("#segMode button").forEach(b=>{
@@ -426,12 +484,28 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
   const nom = document.getElementById("inNom").value.trim() || "Partie sans nom";
   const j1 = document.getElementById("inJ1").value.trim() || "Joueur 1";
   const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
-  const id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const sync = modeCreation==="duo" && document.getElementById("inSync").checked;
+  const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
-             trouve:{cantons:{},speciales:{},europe:{}} };
+             trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
   db.games[id]=partie; ecrireTout(db);
+  if(sync){ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
   modaleCreer.classList.remove("actif");
   lancerJeu();
+  if(sync){ alert("Code à partager avec l'autre joueur :\n\n"+id); }
+});
+
+document.getElementById("btnRejoindre").addEventListener("click",()=>{
+  const saisie = prompt("Code de la partie (donné par l'autre joueur) :");
+  if(!saisie) return;
+  const code = saisie.trim().toUpperCase();
+  firebase.database().ref("games/"+code).once("value").then(snap=>{
+    const data = snap.val();
+    if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
+    partie = data;
+    db.games[code] = partie; ecrireTout(db);
+    lancerJeu();
+  }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
 });
 
 /* ====================== OUVRIR / JEU ====================== */
@@ -443,6 +517,15 @@ function lancerJeu(){
   if(duo){
     document.getElementById("legJ1").textContent = partie.players[0];
     document.getElementById("legJ2").textContent = partie.players[1];
+  }
+  const codeEl = document.getElementById("codePartage");
+  if(partie.sync){
+    codeEl.textContent = "Code de partie : "+partie.code;
+    codeEl.style.display = "block";
+    attacherSync(partie.code);
+  } else {
+    codeEl.style.display = "none";
+    detacherSync();
   }
   GROUPES.forEach(([g,liste])=>remplir(g,liste));
   majTotaux();
@@ -582,7 +665,7 @@ document.querySelectorAll(".onglet").forEach(o=>{
     window.scrollTo(0,0);
   });
 });
-document.getElementById("btnAccueil").addEventListener("click",()=>{ rendreAccueil(); montrer("accueil"); });
+document.getElementById("btnAccueil").addEventListener("click",()=>{ detacherSync(); rendreAccueil(); montrer("accueil"); });
 
 /* ====================== SCORE ====================== */
 const modaleScore=document.getElementById("modaleScore");
