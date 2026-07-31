@@ -292,6 +292,16 @@ function genererCode(n=5){
   return s;
 }
 
+/* Firebase ne stocke pas les objets vides : {cantons:{},...} vide peut disparaître
+   au retour. On reconstruit toujours une structure trouve valide. */
+function normaliserPartie(p){
+  p.trouve = p.trouve || {};
+  p.trouve.cantons = p.trouve.cantons || {};
+  p.trouve.speciales = p.trouve.speciales || {};
+  p.trouve.europe = p.trouve.europe || {};
+  return p;
+}
+
 let refSync = null;
 function detacherSync(){ if(refSync){ refSync.off(); refSync = null; } }
 function attacherSync(code){
@@ -301,7 +311,7 @@ function attacherSync(code){
     refSync.on("value", snap=>{
       const data = snap.val();
       if(!data || !partie || partie.code!==code) return;
-      partie = data;
+      partie = normaliserPartie(data);
       db.games[code] = partie; ecrireTout(db);
       document.getElementById("titreJeu").textContent = partie.nom;
       if(partie.mode==="duo"){
@@ -516,7 +526,11 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
     firebase.database().ref("games/"+code).once("value").then(snap=>{
       const data = snap.val();
       if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
-      partie = data;
+      partie = normaliserPartie(data);
+      db.games[code] = partie; ecrireTout(db);
+const data = snap.val();
+      if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
+      partie = normaliserPartie(data);
       db.games[code] = partie; ecrireTout(db);
       lancerJeu();
     }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
