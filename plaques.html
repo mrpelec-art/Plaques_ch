@@ -296,20 +296,25 @@ let refSync = null;
 function detacherSync(){ if(refSync){ refSync.off(); refSync = null; } }
 function attacherSync(code){
   detacherSync();
-  refSync = firebase.database().ref("games/"+code);
-  refSync.on("value", snap=>{
-    const data = snap.val();
-    if(!data || !partie || partie.code!==code) return;
-    partie = data;
-    db.games[code] = partie; ecrireTout(db);
-    document.getElementById("titreJeu").textContent = partie.nom;
-    if(partie.mode==="duo"){
-      document.getElementById("legJ1").textContent = partie.players[0];
-      document.getElementById("legJ2").textContent = partie.players[1];
-    }
-    GROUPES.forEach(([g,liste])=>remplir(g,liste));
-    majTotaux();
-  });
+  try{
+    refSync = firebase.database().ref("games/"+code);
+    refSync.on("value", snap=>{
+      const data = snap.val();
+      if(!data || !partie || partie.code!==code) return;
+      partie = data;
+      db.games[code] = partie; ecrireTout(db);
+      document.getElementById("titreJeu").textContent = partie.nom;
+      if(partie.mode==="duo"){
+        document.getElementById("legJ1").textContent = partie.players[0];
+        document.getElementById("legJ2").textContent = partie.players[1];
+      }
+      GROUPES.forEach(([g,liste])=>remplir(g,liste));
+      majTotaux();
+    }, erreur=>{ console.warn("Synchro interrompue :", erreur); });
+  }catch(e){
+    console.warn("Impossible d'activer la synchro :", e);
+    alert("La synchronisation n'a pas pu démarrer (problème de connexion). La partie reste jouable normalement sur cet appareil.");
+  }
 }
 
 /* ====================== DONNÉES ====================== */
@@ -398,8 +403,9 @@ function sauver(){
   partie.maj = Date.now();
   db.games[partie.id] = partie;
   ecrireTout(db);
-  if(partie.sync && partie.code){
-    firebase.database().ref("games/"+partie.code).set(partie).catch(()=>{});
+if(partie.sync && partie.code){
+    try{ firebase.database().ref("games/"+partie.code).set(partie).catch(()=>{}); }
+    catch(e){ console.warn("Échec de l'envoi de la synchro :", e); }
   }
 }
 
@@ -489,7 +495,10 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
   partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
              trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
   db.games[id]=partie; ecrireTout(db);
-  if(sync){ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
+  if(sync){
+    try{ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
+    catch(e){ console.warn("Échec de la création synchronisée :", e); }
+  }
   modaleCreer.classList.remove("actif");
   lancerJeu();
   if(sync){ alert("Code à partager avec l'autre joueur :\n\n"+id); }
@@ -499,13 +508,17 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
   const saisie = prompt("Code de la partie (donné par l'autre joueur) :");
   if(!saisie) return;
   const code = saisie.trim().toUpperCase();
-  firebase.database().ref("games/"+code).once("value").then(snap=>{
-    const data = snap.val();
-    if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
-    partie = data;
-    db.games[code] = partie; ecrireTout(db);
-    lancerJeu();
-  }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
+  try{
+    firebase.database().ref("games/"+code).once("value").then(snap=>{
+      const data = snap.val();
+      if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
+      partie = data;
+      db.games[code] = partie; ecrireTout(db);
+      lancerJeu();
+    }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
+  }catch(e){
+    alert("Impossible de rejoindre la partie. Vérifie ta connexion internet.");
+  }
 });
 
 /* ====================== OUVRIR / JEU ====================== */
