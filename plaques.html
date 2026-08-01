@@ -17,6 +17,9 @@
     --gris:#8e8e93;--gris-clair:#e5e5ea;
     --ombre:0 2px 10px rgba(0,0,0,.08);
   }
+  .selecteur-couleur{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:2px 0 4px;}
+  .swatch{width:100%;aspect-ratio:1;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0;}
+  .swatch.selection{border-color:var(--texte);box-shadow:0 0 0 2px var(--carte),0 0 0 4px var(--texte);}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;}
   body{
@@ -121,7 +124,6 @@
   .duo-legende{display:flex;gap:8px;margin-top:11px;}
   .duo-legende .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.16);border-radius:10px;padding:7px;font-size:13px;font-weight:700;}
   .pastille{width:13px;height:13px;border-radius:50%;display:inline-block;}
-  .pastille.p1{background:#7CFFB0;} .pastille.p2{background:#9DC2FF;}
 
   /* ---------- Onglets ---------- */
   .onglets{display:flex;background:var(--carte);position:sticky;top:var(--header-h,0px);z-index:9;box-shadow:var(--ombre);}
@@ -147,17 +149,15 @@
   .plaque .drapeau{font-size:22px;line-height:1;margin-bottom:3px;}
   .plaque .code{font-size:21px;font-weight:800;letter-spacing:.4px;}
   .plaque .nom{font-size:11px;color:var(--gris);margin-top:3px;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center;}
-  .plaque.p1{background:var(--vert);border-color:var(--vert);}
-  .plaque.p2{background:var(--bleu);border-color:var(--bleu);}
-  .plaque.p1 .code,.plaque.p1 .nom,.plaque.p2 .code,.plaque.p2 .nom{color:#fff;}
-  .plaque .marque{position:absolute;top:4px;right:6px;font-size:12px;color:#fff;font-weight:900;display:none;}
+  .plaque.p1 .code,.plaque.p1 .nom,.plaque.p2 .code,.plaque.p2 .nom{color:inherit;}
+  .plaque .marque{position:absolute;top:4px;right:6px;font-size:12px;color:inherit;font-weight:900;display:none;}
   .plaque.p1 .marque,.plaque.p2 .marque{display:block;}
-.compteur-section{font-size:12px;color:var(--gris);text-align:center;margin:16px 0 4px;}
-@keyframes secoue{
-  10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);}
-  30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);}
-}
-.plaque.secoue{animation:secoue .4s;}
+  .compteur-section{font-size:12px;color:var(--gris);text-align:center;margin:16px 0 4px;}
+  @keyframes secoue{
+    10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);}
+    30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);}
+  }
+  .plaque.secoue{animation:secoue .4s;}
 
   /* ---------- Score ---------- */
   #score .feuille{max-height:88vh;overflow-y:auto;}
@@ -209,6 +209,14 @@
         <div class="champ"><label>Joueur 1</label><input type="text" id="inJ1" placeholder="Moi" maxlength="14"></div>
         <div class="champ"><label>Joueur 2</label><input type="text" id="inJ2" placeholder="Mon frère" maxlength="14"></div>
       </div>
+      <div class="champ">
+        <label>Couleur du joueur 1</label>
+        <div class="selecteur-couleur" id="couleurJ1"></div>
+      </div>
+      <div class="champ" id="champCouleurJ2">
+        <label>Couleur du joueur 2</label>
+        <div class="selecteur-couleur" id="couleurJ2"></div>
+      </div>
       <label class="champ-sync">
         <input type="checkbox" id="inSync">
         Jouer sur 2 téléphones (code à partager)
@@ -217,6 +225,17 @@
     <div class="feuille-actions">
       <button class="btn-annuler" id="btnAnnulerCreer">Annuler</button>
       <button class="btn-creer" id="btnValiderCreer">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== MODALE COULEUR (rejoindre) ====================== -->
+<div class="overlay" id="modaleCouleurRejoindre">
+  <div class="feuille">
+    <h3>Choisis ta couleur</h3>
+    <div class="selecteur-couleur" id="couleurRejoindre"></div>
+    <div class="feuille-actions">
+      <button class="btn-creer" id="btnValiderCouleurRejoindre" style="width:100%;flex:none;">Valider</button>
     </div>
   </div>
 </div>
@@ -235,8 +254,8 @@
       <div class="progress"><span id="totalBarre"></span></div>
     </div>
     <div class="duo-legende" id="duoLegende" style="display:none;">
-      <div class="chip"><span class="pastille p1"></span><span id="legJ1">J1</span> · <span id="legCntJ1">0</span></div>
-      <div class="chip"><span class="pastille p2"></span><span id="legJ2">J2</span> · <span id="legCntJ2">0</span></div>
+      <div class="chip"><span class="pastille" id="pastilleJ1"></span><span id="legJ1">J1</span> · <span id="legCntJ1">0</span></div>
+      <div class="chip"><span class="pastille" id="pastilleJ2"></span><span id="legJ2">J2</span> · <span id="legCntJ2">0</span></div>
     </div>
   </header>
 
@@ -305,6 +324,7 @@ function normaliserPartie(p){
   p.trouve.cantons = p.trouve.cantons || {};
   p.trouve.speciales = p.trouve.speciales || {};
   p.trouve.europe = p.trouve.europe || {};
+  p.couleurs = p.couleurs || ["vert","bleu"];
   return p;
 }
 
@@ -320,10 +340,7 @@ function attacherSync(code){
       partie = normaliserPartie(data);
       db.games[code] = partie; ecrireTout(db);
       document.getElementById("titreJeu").textContent = partie.nom;
-      if(partie.mode==="duo"){
-        document.getElementById("legJ1").textContent = partie.players[0];
-        document.getElementById("legJ2").textContent = partie.players[1];
-      }
+      if(partie.mode==="duo"){ majLegende(); }
       GROUPES.forEach(([g,liste])=>remplir(g,liste));
       majTotaux();
     }, erreur=>{ console.warn("Synchro interrompue :", erreur); });
@@ -371,6 +388,42 @@ const GROUPES = [["cantons",CANTONS],["speciales",SPECIALES],["europe",EUROPE]];
 const MAX = {cantons:CANTONS.length, speciales:SPECIALES.length, europe:EUROPE.length};
 const TOTAL = CANTONS.length + SPECIALES.length + EUROPE.length;
 const CLE = "chasse_plaques_v2";
+
+/* Couleurs disponibles pour les joueurs en mode duo */
+const COULEURS = [
+  {cle:"bleu",   nom:"Bleu",   hex:"#2563eb", texte:"#fff"},
+  {cle:"rouge",  nom:"Rouge",  hex:"#dc2626", texte:"#fff"},
+  {cle:"jaune",  nom:"Jaune",  hex:"#eab308", texte:"#1a1a1a"},
+  {cle:"vert",   nom:"Vert",   hex:"#16a34a", texte:"#fff"},
+  {cle:"orange", nom:"Orange", hex:"#f97316", texte:"#fff"},
+  {cle:"violet", nom:"Violet", hex:"#7c3aed", texte:"#fff"},
+  {cle:"rose",   nom:"Rose",   hex:"#ec4899", texte:"#fff"},
+  {cle:"brun",   nom:"Brun",   hex:"#7c4a1e", texte:"#fff"}
+];
+function couleurParCle(cle){ return COULEURS.find(c=>c.cle===cle) || COULEURS[3]; }
+function couleurJoueur(v){
+  const cle = (partie.couleurs && partie.couleurs[v-1]) || (v===1 ? "vert" : "bleu");
+  return couleurParCle(cle);
+}
+/* construit une rangée de pastilles cliquables dans "conteneur", "exclure" retire une couleur de la liste */
+function construireSelecteurCouleur(conteneur, valeurDefaut, exclure){
+  conteneur.innerHTML = "";
+  conteneur.dataset.valeur = valeurDefaut;
+  COULEURS.forEach(c=>{
+    if(exclure && exclure===c.cle) return;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "swatch"+(c.cle===valeurDefaut?" selection":"");
+    b.style.background = c.hex;
+    b.title = c.nom;
+    b.addEventListener("click",()=>{
+      conteneur.querySelectorAll(".swatch").forEach(s=>s.classList.remove("selection"));
+      b.classList.add("selection");
+      conteneur.dataset.valeur = c.cle;
+    });
+    conteneur.appendChild(b);
+  });
+}
 
 /* Écussons (Wikimedia Commons) — fichier introuvable ou nom différent ? l'image se cache toute seule (onerror). */
 const ECUSSONS = {
@@ -493,6 +546,8 @@ document.getElementById("btnNouvelle").addEventListener("click",()=>{
   document.getElementById("inNom").value = "Partie du "+d.toLocaleDateString("fr-CH",{day:"numeric",month:"long"});
   document.getElementById("inJ1").value=""; document.getElementById("inJ2").value="";
   document.getElementById("inSync").checked = false;
+  construireSelecteurCouleur(document.getElementById("couleurJ1"), "vert");
+  construireSelecteurCouleur(document.getElementById("couleurJ2"), "bleu");
   modaleCreer.classList.add("actif");
 });
 document.querySelectorAll("#segMode button").forEach(b=>{
@@ -510,8 +565,12 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
     const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
     const sync = modeCreation==="duo" && document.getElementById("inSync").checked;
     const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+    let couleurJ1 = document.getElementById("couleurJ1").dataset.valeur || "vert";
+    let couleurJ2 = document.getElementById("couleurJ2").dataset.valeur || "bleu";
+    if(couleurJ1===couleurJ2){ couleurJ2 = COULEURS.find(c=>c.cle!==couleurJ1).cle; }
     partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
-               trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
+               trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null,
+               couleurs:[couleurJ1,couleurJ2] };
     db.games[id]=partie;
     if(sync){ db.identites = db.identites || {}; db.identites[id] = 1; }
     ecrireTout(db);
@@ -527,6 +586,7 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
   }
 });
 
+const modaleCouleurRejoindre = document.getElementById("modaleCouleurRejoindre");
 document.getElementById("btnRejoindre").addEventListener("click",()=>{
   const saisie = prompt("Code de la partie (donné par l'autre joueur) :");
   if(!saisie) return;
@@ -536,10 +596,20 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
       const data = snap.val();
       if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
       partie = normaliserPartie(data);
-      db.games[code] = partie;
-      db.identites = db.identites || {}; db.identites[code] = 2;
-      ecrireTout(db);
-      lancerJeu();
+      const couleurJ1 = partie.couleurs[0];
+      construireSelecteurCouleur(document.getElementById("couleurRejoindre"),
+        couleurJ1==="bleu" ? "vert" : "bleu", couleurJ1);
+      modaleCouleurRejoindre.classList.add("actif");
+      document.getElementById("btnValiderCouleurRejoindre").onclick = ()=>{
+        const choix = document.getElementById("couleurRejoindre").dataset.valeur;
+        partie.couleurs = [couleurJ1, choix];
+        modaleCouleurRejoindre.classList.remove("actif");
+        db.games[code] = partie;
+        db.identites = db.identites || {}; db.identites[code] = 2;
+        ecrireTout(db);
+        firebase.database().ref("games/"+code+"/couleurs/1").set(choix).catch(()=>{});
+        lancerJeu();
+      };
     }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
   }catch(e){
     alert("Impossible de rejoindre la partie. Vérifie ta connexion internet.");
@@ -547,16 +617,19 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
 });
 
 /* ====================== OUVRIR / JEU ====================== */
+function majLegende(){
+  document.getElementById("legJ1").textContent = partie.players[0];
+  document.getElementById("legJ2").textContent = partie.players[1];
+  document.getElementById("pastilleJ1").style.background = couleurJoueur(1).hex;
+  document.getElementById("pastilleJ2").style.background = couleurJoueur(2).hex;
+}
 function ouvrirPartie(id){ partie = db.games[id]; lancerJeu(); }
 function lancerJeu(){
   monJoueur = partie.sync ? ((db.identites && db.identites[partie.id]) || null) : null;
   document.getElementById("titreJeu").textContent = partie.nom;
   const duo = partie.mode==="duo";
   document.getElementById("duoLegende").style.display = duo?"flex":"none";
-  if(duo){
-    document.getElementById("legJ1").textContent = partie.players[0];
-    document.getElementById("legJ2").textContent = partie.players[1];
-  }
+  if(duo){ majLegende(); }
   const codeEl = document.getElementById("codePartage");
   if(partie.sync){
     codeEl.textContent = "Code de partie : "+partie.code;
@@ -580,6 +653,7 @@ function remplir(groupe,liste){
     const v = partie.trouve[groupe][code];
     const div=document.createElement("div");
     div.className="plaque"+(v?(" p"+v):"");
+    if(v){ const c=couleurJoueur(v); div.style.background=c.hex; div.style.borderColor=c.hex; div.style.color=c.texte; }
     div.dataset.code = code;
 const marque = v ? (partie.mode==="duo" ? initiale(partie.players[v-1]) : "✓") : "";
     const urlImg = (groupe==="cantons" && code!=="FL") ? urlEcusson(code) : null;
@@ -599,7 +673,12 @@ function appliquerValeur(groupe, code, v){
   const d = document.querySelector(`#${IDS_GRILLE[groupe]} [data-code="${code}"]`);
   if(d){
     d.classList.remove("p1","p2");
-    if(v) d.classList.add("p"+v);
+    d.style.background=""; d.style.borderColor=""; d.style.color="";
+    if(v){
+      d.classList.add("p"+v);
+      const c = couleurJoueur(v);
+      d.style.background=c.hex; d.style.borderColor=c.hex; d.style.color=c.texte;
+    }
     d.querySelector(".marque").textContent = v ? (partie.mode==="duo"?initiale(partie.players[v-1]):"✓") : "";
   }
 }
@@ -634,6 +713,7 @@ function basculer(groupe,code){
     if(complet) feuArtifice();
     Promise.all(groupesTouches.map(g=>pousserTrouveSync(g, code, v))).then(resultats=>{
       if(resultats.some(r=>!r.committed)){
+        // quelqu'un d'autre avait déjà cette plaque entre-temps : on annule chez nous
         groupesTouches.forEach(g=>appliquerValeur(g, code, cur));
         db.games[partie.id]=partie; ecrireTout(db); majTotaux();
         secouer(groupe,code);
