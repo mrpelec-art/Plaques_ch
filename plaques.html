@@ -610,18 +610,46 @@ function secouer(groupe,code){
   d.classList.remove("secoue"); void d.offsetWidth; d.classList.add("secoue");
 }
 
+/* écrit UNE seule case de "trouve" via une transaction Firebase (atomique côté serveur) :
+   ça évite qu'un appareil en retard sur la synchro n'écrase la plaque déjà prise par l'autre joueur. */
+function pousserTrouveSync(groupe, code, v){
+  return firebase.database().ref(`games/${partie.code}/trouve/${groupe}/${code}`)
+    .transaction(actuel => (actuel && actuel!==monJoueur) ? undefined : (v || null))
+    .catch(()=>({committed:false}));
+}
+
 function basculer(groupe,code){
   const cur = partie.trouve[groupe][code];
-  let v;
+  const groupesTouches = [groupe, ...((LIES[code]||[]).filter(g=>g!==groupe))];
+
   if(partie.mode==="duo" && partie.sync && monJoueur){
     if(cur && cur!==monJoueur){ secouer(groupe,code); return; }
-    v = cur ? undefined : monJoueur;
-  } else if(partie.mode==="duo"){
+    const v = cur ? undefined : monJoueur;
+    const avant = {};
+    groupesTouches.forEach(g=>{ avant[g]=Object.keys(partie.trouve[g]).length; });
+    groupesTouches.forEach(g=>appliquerValeur(g, code, v));           // affichage instantané
+    partie.maj = Date.now(); db.games[partie.id]=partie; ecrireTout(db);
+    majTotaux();
+    const complet = groupesTouches.some(g=>avant[g]<MAX[g] && Object.keys(partie.trouve[g]).length===MAX[g]);
+    if(complet) feuArtifice();
+    Promise.all(groupesTouches.map(g=>pousserTrouveSync(g, code, v))).then(resultats=>{
+      if(resultats.some(r=>!r.committed)){
+        groupesTouches.forEach(g=>appliquerValeur(g, code, cur));
+        db.games[partie.id]=partie; ecrireTout(db); majTotaux();
+        secouer(groupe,code);
+      } else {
+        firebase.database().ref("games/"+partie.code+"/maj").set(partie.maj).catch(()=>{});
+      }
+    });
+    return;
+  }
+
+  let v;
+  if(partie.mode==="duo"){
     if(!cur){ v=1; } else if(cur===1){ v=2; } else { v=undefined; }
   } else {
     v = cur ? undefined : 1;
   }
-  const groupesTouches = [groupe, ...((LIES[code]||[]).filter(g=>g!==groupe))];
   const avant = {};
   groupesTouches.forEach(g=>{ avant[g]=Object.keys(partie.trouve[g]).length; });
   groupesTouches.forEach(g=>appliquerValeur(g, code, v));
