@@ -152,7 +152,12 @@
   .plaque.p1 .code,.plaque.p1 .nom,.plaque.p2 .code,.plaque.p2 .nom{color:#fff;}
   .plaque .marque{position:absolute;top:4px;right:6px;font-size:12px;color:#fff;font-weight:900;display:none;}
   .plaque.p1 .marque,.plaque.p2 .marque{display:block;}
-  .compteur-section{font-size:12px;color:var(--gris);text-align:center;margin:16px 0 4px;}
+.compteur-section{font-size:12px;color:var(--gris);text-align:center;margin:16px 0 4px;}
+@keyframes secoue{
+  10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);}
+  30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);}
+}
+.plaque.secoue{animation:secoue .4s;}
 
   /* ---------- Score ---------- */
   #score .feuille{max-height:88vh;overflow-y:auto;}
@@ -408,6 +413,7 @@ function ecrireTout(d){ localStorage.setItem(CLE, JSON.stringify(d)); }
 let db = lireTout();
 let partie = null;            // partie en cours
 let modeCreation = "solo";
+let monJoueur = null;         // en duo synchronisé : 1 (créateur) ou 2 (invité) — jamais envoyé à Firebase
 
 function sauver(){
   if(!partie) return;
@@ -506,7 +512,9 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
     const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
     partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
                trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null };
-    db.games[id]=partie; ecrireTout(db);
+    db.games[id]=partie;
+    if(sync){ db.identites = db.identites || {}; db.identites[id] = 1; }
+    ecrireTout(db);
     if(sync){
       try{ firebase.database().ref("games/"+id).set(partie).catch(()=>{}); }
       catch(e){ console.warn("Échec de la création synchronisée :", e); }
@@ -528,7 +536,9 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
       const data = snap.val();
       if(!data){ alert("Code introuvable. Vérifie qu'il est correct."); return; }
       partie = normaliserPartie(data);
-      db.games[code] = partie; ecrireTout(db);
+      db.games[code] = partie;
+      db.identites = db.identites || {}; db.identites[code] = 2;
+      ecrireTout(db);
       lancerJeu();
     }).catch(()=>{ alert("Impossible de rejoindre la partie. Vérifie ta connexion internet."); });
   }catch(e){
@@ -539,6 +549,7 @@ document.getElementById("btnRejoindre").addEventListener("click",()=>{
 /* ====================== OUVRIR / JEU ====================== */
 function ouvrirPartie(id){ partie = db.games[id]; lancerJeu(); }
 function lancerJeu(){
+  monJoueur = partie.sync ? ((db.identites && db.identites[partie.id]) || null) : null;
   document.getElementById("titreJeu").textContent = partie.nom;
   const duo = partie.mode==="duo";
   document.getElementById("duoLegende").style.display = duo?"flex":"none";
@@ -593,10 +604,19 @@ function appliquerValeur(groupe, code, v){
   }
 }
 
+function secouer(groupe,code){
+  const d = document.querySelector(`#${IDS_GRILLE[groupe]} [data-code="${code}"]`);
+  if(!d) return;
+  d.classList.remove("secoue"); void d.offsetWidth; d.classList.add("secoue");
+}
+
 function basculer(groupe,code){
   const cur = partie.trouve[groupe][code];
   let v;
-  if(partie.mode==="duo"){
+  if(partie.mode==="duo" && partie.sync && monJoueur){
+    if(cur && cur!==monJoueur){ secouer(groupe,code); return; }
+    v = cur ? undefined : monJoueur;
+  } else if(partie.mode==="duo"){
     if(!cur){ v=1; } else if(cur===1){ v=2; } else { v=undefined; }
   } else {
     v = cur ? undefined : 1;
