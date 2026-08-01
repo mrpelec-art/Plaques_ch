@@ -204,6 +204,10 @@
         <button data-mode="duo">2 joueurs</button>
       </div>
     </div>
+    <div class="champ" id="champCouleurSolo">
+      <label>Couleur</label>
+      <div class="selecteur-couleur" id="couleurSolo"></div>
+    </div>
     <div id="champsDuo">
       <div class="duo-noms">
         <div class="champ"><label>Joueur 1</label><input type="text" id="inJ1" placeholder="Moi" maxlength="14"></div>
@@ -405,8 +409,9 @@ function couleurJoueur(v){
   const cle = (partie.couleurs && partie.couleurs[v-1]) || (v===1 ? "vert" : "bleu");
   return couleurParCle(cle);
 }
-/* construit une rangée de pastilles cliquables dans "conteneur", "exclure" retire une couleur de la liste */
-function construireSelecteurCouleur(conteneur, valeurDefaut, exclure){
+/* construit une rangée de pastilles cliquables dans "conteneur", "exclure" retire une couleur de la liste.
+   "onChoix" (optionnel) est appelé avec la clé choisie, pour prévenir un autre sélecteur lié. */
+function construireSelecteurCouleur(conteneur, valeurDefaut, exclure, onChoix){
   conteneur.innerHTML = "";
   conteneur.dataset.valeur = valeurDefaut;
   COULEURS.forEach(c=>{
@@ -420,8 +425,27 @@ function construireSelecteurCouleur(conteneur, valeurDefaut, exclure){
       conteneur.querySelectorAll(".swatch").forEach(s=>s.classList.remove("selection"));
       b.classList.add("selection");
       conteneur.dataset.valeur = c.cle;
+      if(onChoix) onChoix(c.cle);
     });
     conteneur.appendChild(b);
+  });
+}
+
+/* couleur choisie en mode solo */
+let coloSolo = "vert";
+function rendreSelecteurSolo(){
+  construireSelecteurCouleur(document.getElementById("couleurSolo"), coloSolo, null, cle=>{ coloSolo = cle; });
+}
+
+/* couleurs choisies dans la modale de création : les deux sélecteurs s'excluent mutuellement en direct */
+let coloDuo = { j1:"vert", j2:"bleu" };
+function rendreSelecteursDuo(){
+  if(coloDuo.j1===coloDuo.j2){ coloDuo.j2 = COULEURS.find(c=>c.cle!==coloDuo.j1).cle; }
+  construireSelecteurCouleur(document.getElementById("couleurJ1"), coloDuo.j1, coloDuo.j2, cle=>{
+    coloDuo.j1 = cle; rendreSelecteursDuo();
+  });
+  construireSelecteurCouleur(document.getElementById("couleurJ2"), coloDuo.j2, coloDuo.j1, cle=>{
+    coloDuo.j2 = cle; rendreSelecteursDuo();
   });
 }
 
@@ -546,8 +570,11 @@ document.getElementById("btnNouvelle").addEventListener("click",()=>{
   document.getElementById("inNom").value = "Partie du "+d.toLocaleDateString("fr-CH",{day:"numeric",month:"long"});
   document.getElementById("inJ1").value=""; document.getElementById("inJ2").value="";
   document.getElementById("inSync").checked = false;
-  construireSelecteurCouleur(document.getElementById("couleurJ1"), "vert");
-  construireSelecteurCouleur(document.getElementById("couleurJ2"), "bleu");
+  coloSolo = "vert";
+  rendreSelecteurSolo();
+  document.getElementById("champCouleurSolo").style.display = "block";
+  coloDuo = { j1:"vert", j2:"bleu" };
+  rendreSelecteursDuo();
   modaleCreer.classList.add("actif");
 });
 document.querySelectorAll("#segMode button").forEach(b=>{
@@ -555,6 +582,7 @@ document.querySelectorAll("#segMode button").forEach(b=>{
     modeCreation=b.dataset.mode;
     document.querySelectorAll("#segMode button").forEach(x=>x.classList.toggle("actif",x===b));
     document.getElementById("champsDuo").classList.toggle("actif",modeCreation==="duo");
+    document.getElementById("champCouleurSolo").style.display = modeCreation==="solo" ? "block" : "none";
   });
 });
 document.getElementById("btnAnnulerCreer").addEventListener("click",()=>modaleCreer.classList.remove("actif"));
@@ -565,12 +593,9 @@ document.getElementById("btnValiderCreer").addEventListener("click",()=>{
     const j2 = document.getElementById("inJ2").value.trim() || "Joueur 2";
     const sync = modeCreation==="duo" && document.getElementById("inSync").checked;
     const id = sync ? genererCode() : (Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-    let couleurJ1 = document.getElementById("couleurJ1").dataset.valeur || "vert";
-    let couleurJ2 = document.getElementById("couleurJ2").dataset.valeur || "bleu";
-    if(couleurJ1===couleurJ2){ couleurJ2 = COULEURS.find(c=>c.cle!==couleurJ1).cle; }
     partie = { id, nom, mode:modeCreation, players:[j1,j2], debut:Date.now(), maj:Date.now(),
                trouve:{cantons:{},speciales:{},europe:{}}, sync, code: sync ? id : null,
-               couleurs:[couleurJ1,couleurJ2] };
+               couleurs: modeCreation==="solo" ? [coloSolo,"bleu"] : [coloDuo.j1,coloDuo.j2] };
     db.games[id]=partie;
     if(sync){ db.identites = db.identites || {}; db.identites[id] = 1; }
     ecrireTout(db);
