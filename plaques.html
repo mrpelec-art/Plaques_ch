@@ -312,7 +312,11 @@ const firebaseConfig = {
   messagingSenderId: "384227131158",
   appId: "1:384227131158:web:9e95188ba9c20e082eda37"
 };
-firebase.initializeApp(firebaseConfig);
+try{
+  if(typeof firebase !== "undefined") firebase.initializeApp(firebaseConfig);
+}catch(e){
+  console.warn("Firebase indisponible (hors ligne ?) — la partie reste jouable localement.", e);
+}
 
 const ALPHABET_CODE = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function genererCode(n=5){
@@ -717,9 +721,13 @@ function secouer(groupe,code){
 /* écrit UNE seule case de "trouve" via une transaction Firebase (atomique côté serveur) :
    ça évite qu'un appareil en retard sur la synchro n'écrase la plaque déjà prise par l'autre joueur. */
 function pousserTrouveSync(groupe, code, v){
-  return firebase.database().ref(`games/${partie.code}/trouve/${groupe}/${code}`)
-    .transaction(actuel => (actuel && actuel!==monJoueur) ? undefined : (v || null))
-    .catch(()=>({committed:false}));
+  try{
+    return firebase.database().ref(`games/${partie.code}/trouve/${groupe}/${code}`)
+      .transaction(actuel => (actuel && actuel!==monJoueur) ? undefined : (v || null))
+      .catch(()=>({committed:false}));
+  }catch(e){
+    return Promise.resolve({committed:false});
+  }
 }
 
 function basculer(groupe,code){
